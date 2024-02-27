@@ -1,2 +1,3 @@
 # BIMM143
-Class work from winter 2024
+
+Class work from W24 for BIMM143 at UC San Diego
