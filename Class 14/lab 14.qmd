@@ -1,0 +1,228 @@
+---
+title: "Class 14: RNAseq Mini Project"
+author: "Farnam (PID: A17628539)"
+format: pdf
+---
+
+Run a compelete RNAseq analysis workflow from counts to enriched genesets...
+
+## Data Import
+
+```{r}
+counts <- read.csv("GSE37704_featurecounts.csv", row.names = 1)
+metadata <- read.csv("GSE37704_metadata.csv")
+```
+
+## Data Exploration
+```{r}
+head(counts)
+```
+
+
+```{r}
+head(metadata)
+```
+
+Check if the coData and CountData match up
+
+```{r}
+metadata$id
+```
+
+```{r}
+colnames(counts)
+```
+
+```{r}
+# RM first column
+countData <- counts[,-1]
+```
+
+Now check if the metadata and count data columns all match up:
+
+```{r}
+all(colnames(countData) == metadata$id)
+```
+
+We need to remove all the zero cunt genes. 
+
+```{r}
+head(countData, 3)
+```
+
+To identify these zero count genes we can sum across the rows and check ifg the sum is more than zero. 
+
+```{r}
+to.keep.inds <- rowSums(countData) > 0
+nonzero.counts <- countData[to.keep.inds,]
+```
+
+
+## DESeq setup and analysis
+
+```{r}
+#| message: false
+
+library(DESeq2)
+
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = nonzero.counts,
+                              colData = metadata,
+                              design = ~condition)
+```
+
+```{r}
+dds <- DESeq(dds)
+```
+
+
+## Result extraction
+
+```{r}
+res <- results(dds)
+head(res)
+```
+
+
+
+## volcano plot
+
+```{r}
+plot( res$log2FoldChange, -log(res$padj))
+abline(v=c(-2,2), col= "red")
+abline(h=log(0.05), col="red")
+```
+
+Setup a wee color vector for this plot
+
+```{r}
+mycols <- rep("gray", nrow(res))
+plot( res$log2FoldChange, -log(res$padj), col= mycols)
+abline(v=c(-2,2), col= "red")
+abline(h=log(0.05), col="red")
+
+mycols[abs(res$log2FoldChange) > 2] <- "blue"
+mycols[res$padj > 0.05] <- "gray"
+```
+
+
+## Gene annotation
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+
+```{r}
+columns(org.Hs.eg.db)
+```
+
+
+```{r}
+
+res$symbol<- mapIds(x = org.Hs.eg.db,
+                    keys=rownames(nonzero.counts), 
+                    keytype="ENSEMBL",
+                    column="SYMBOL")
+
+res$entrez <-  mapIds(x = org.Hs.eg.db,
+                    keys=rownames(nonzero.counts),
+                    keytype="ENSEMBL",
+                    column="ENTREZID")
+                   
+
+head(res)
+```
+
+## Pathway analysis 
+
+```{r}
+#| message: False
+
+library(gage)
+library(gageData)
+library(pathview)
+```
+
+```{r}
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+Now we get the result:
+
+```{r}
+# Get the results
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+```{r}
+attributes(keggres)
+```
+
+```{r}
+head(keggres$less)
+```
+
+LEt's look at one of these pathways: hsa04110
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+
+![The KEGG cell-cycle pathway with our DEGs highlighted](hsa04110.png)
+
+## Using gene onology (GO)
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets <- go.sets.hs[go.subs.hs$BP]
+
+gobpres <- gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+
+### Reactome Analysis
+
+We can use reactome via an R Package or use their relatively new website interface. Let's try to use the later.
+
+It wants a list of our most interesting i.e. siginificant) genes in gene SYMBOL format.
+
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+```
+
+We will write our wee file so we can use them on the website: 
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+an example figure from reactome online:
+
+![](R-HSA-68886.png)
+
+
+
+
+
+
