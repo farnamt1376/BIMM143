@@ -1,0 +1,6 @@
+---
+title: "bimm143"
+format: html
+---
+
+Class work from W24 for BIMM143 at UCSD
