@@ -1,0 +1,73 @@
+---
+title: "Class 12 (Online)"
+author: 'Farnam (PID: A17628539)'
+date: "2024-02-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section 1. proportion of G/G in a population
+
+Downloaded a CSV file from ensemble <
+https://useast.ensembl.org/Homo_sapiens/Variation/Sample?db=core;r=17:39840102-39950103;v=rs8067378;vdb=variation;vf=959672880#373531_tablePanel
+
+Here we read this CSV file
+
+```{r}
+mxl <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+head(mxl)
+```
+
+```{r}
+table(mxl$Genotype..forward.strand.)
+```
+
+```{r}
+table(mxl$Genotype..forward.strand.) / nrow(mxl) * 100
+
+```
+
+## Section 2 and 3 would be done in Galaxy Portal
+
+Now let's dig into this further:
+
+## One sample is obviously not enough to know what is happening in a population. You are interested in assessing genetic differences on a population scale. 
+
+How many samples do we have?
+
+```{r}
+expr <- read.table("Last section.txt")
+head(expr)
+```
+
+```{r}
+nrow(expr)
+```
+
+```{r}
+table(expr$geno)
+```
+
+```{r}
+library(ggplot2)
+```
+
+Let's make a boxplot:
+
+```{r}
+ggplot(expr) + aes(geno, exp, fill=geno) + 
+geom_boxplot(notch = TRUE)
+
+```
+
+
+
+
+
+
+
+
+
